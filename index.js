@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const port = process.env.local || 5000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 require('dotenv').config();
 require('mongodb');
@@ -34,6 +34,16 @@ async function run() {
         const productsCollections = client.db('OdvutSolution').collection('products');
         const usersCollections = client.db('OdvutSolution').collection('users');
 
+        const verifyAdmin = async (req, res, next) => {
+            const decodedEmail = req.decoded.email;
+            const query = { email: decodedEmail };
+            const user = await usersCollections.findOne(query);
+            if (user?.role !== 'Admin') {
+                return res.status(403).send({ message: 'Forbidden Access' })
+            }
+            next();
+        }
+
         app.get('/jwt', async(req, res) => {
             const email = req.query.email;
             const query = {email:email};
@@ -44,14 +54,73 @@ async function run() {
             }
             res.status(403).send({accessToken: ''})
         })
-        app.get('/products', async(rea, res) => {
+        app.get('/products', async(req, res) => {
             const query = {};
             const product = await productsCollections.find(query).toArray();
             res.send(product)
+        })   
+        app.get('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id:new ObjectId(id) };
+            const result = await productsCollections.findOne(filter);
+            res.send(result);
         })
-        app.post('product', async(req, res) => {
+        app.get('/users', async (req, res) => {
+            const query = {};
+            const users = await usersCollections.find(query).toArray();
+            res.send(users);
+        })
+
+        app.get('/userEmail', async (req, res) => {
+            const userEmail = req.query.email;
+            const query = { email: userEmail };
+            const result = await usersCollections.find(query).toArray();
+            res.send(result)
+        })
+        app.get('/users/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollections.findOne(query);
+            res.send(user);
+        })
+
+        // Check admin api
+        app.get('/users/admin/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollections.findOne(query);
+            res.send({ isAdmin: user?.role === 'Admin' });
+        })
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            const result = await usersCollections.insertOne(user);
+            res.send(result);
+
+        });
+        app.post('/products', async(req, res) => {
             const product = req.body;
             const result = await productsCollections.insertOne(product);
+            res.send(result);
+        })
+        app.put('/editInfo/:id', async (req, res) => {
+            const id = req.params.id;
+            const info = req.body;
+            console.log(info)
+            const filter = { _id:new ObjectId(id) };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set : {
+                    title: info.title,
+                }
+            }
+            const result = await productsCollections.updateOne(filter, updatedDoc, options);
+            res.send(result)
+        })
+        app.delete('/product/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = {_id:new ObjectId(id)}
+            const result = await productsCollections.deleteOne(query);
+            // console.log(result);
             res.send(result);
         })
     }
