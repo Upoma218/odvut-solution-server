@@ -97,12 +97,12 @@ async function run() {
             res.send(result);
 
         });
-        app.post('/products', async(req, res) => {
+        app.post('/products',verifyJWT,verifyAdmin, async(req, res) => {
             const product = req.body;
             const result = await productsCollections.insertOne(product);
             res.send(result);
         })
-        app.put('/editInfo/:id', async (req, res) => {
+        app.put('/editInfo/:id',verifyJWT,verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const info = req.body;
             console.log(info)
@@ -116,7 +116,7 @@ async function run() {
             const result = await productsCollections.updateOne(filter, updatedDoc, options);
             res.send(result)
         })
-        app.delete('/product/:id', async (req, res) => {
+        app.delete('/product/:id',verifyJWT,verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = {_id:new ObjectId(id)}
             const result = await productsCollections.deleteOne(query);
